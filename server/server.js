@@ -59,6 +59,32 @@ if (!ObjectID.isValid(id)){
     console.log('Todos by findById: ', doc);
     res.status(200).send(doc);
   });
+});
+
+app.delete('/todos/:id', (req,res)=> {
+  var id = req.params.id;
+  if (!ObjectID.isValid(id)){
+  console.log('ID not valid');
+  res.status(404).send("Id is not valid");
+}
+Todo.findByIdAndRemove(id,(err,doc)=>{
+  if (err){
+    console.log(err);
+    res.status(400).send();
+    return ;
+  }
+  if(!doc){
+   console.log('ID not found');
+    res.send('ID not found');
+    return;
+  }
+  console.log(doc);
+  res.status(200).send(doc);
+
+});
+
+
+
 })
 
 app.listen(port, ()=>{
