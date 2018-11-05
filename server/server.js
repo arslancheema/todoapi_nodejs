@@ -3,6 +3,9 @@ var express = require ('express');
 // Parse incoming request bodies
 var bodyParser = require ('body-parser');
 
+// For using in PATCH / UPDATE route
+var _ = require('lodash');
+
 var {mongoose} = require ('./db/mongoose.js')
 var {Todo} = require('./models/Todo.js');
 var {User} = require('./models/User.js');
@@ -31,26 +34,25 @@ app.post('/todos', (req,res)=>{
 
 //  GET /todos
 app.get('/todos', (req,res)=>{
-Todo.find({}, function (err, docs) {
-  if (err) {
-  res.status(400).send(err);
-  }
-  res.send({docs});
-});
+  Todo.find({}, function (err, docs) {
+    if (err) {
+    res.status(400).send(err);
+    }
+    res.send({docs});
+  });
 });
 
 //  GET /todos/:id
 app.get('/todos/:id',(req,res)=>{
-var id = req.params.id;
+  var id = req.params.id;
 
-if (!ObjectID.isValid(id)){
-  console.log('ID not valid');
-  res.status(404).send("Id is not valid")
-}
+  if (!ObjectID.isValid(id)){
+  return res.status(404).send();
+  }
 
   Todo.findById ({
     _id: id
-  }, (err, doc)=>{
+    }, (err, doc)=>{
     if(!doc){
      console.log('ID not found');
       res.send('ID not found');
@@ -61,31 +63,54 @@ if (!ObjectID.isValid(id)){
   });
 });
 
+// DELETE /todos/:id
 app.delete('/todos/:id', (req,res)=> {
-  var id = req.params.id;
-  if (!ObjectID.isValid(id)){
-  console.log('ID not valid');
-  res.status(404).send("Id is not valid");
-}
-Todo.findByIdAndRemove(id,(err,doc)=>{
-  if (err){
-    console.log(err);
-    res.status(400).send();
-    return ;
-  }
-  if(!doc){
-   console.log('ID not found');
-    res.send('ID not found');
-    return;
-  }
-  console.log(doc);
-  res.status(200).send(doc);
-
+    var id = req.params.id;
+    if (!ObjectID.isValid(id)){
+    return res.status(404).send();
+    }
+    Todo.findByIdAndRemove(id,(err,doc)=>{
+      if (err){
+        console.log(err);
+        res.status(400).send();
+        return ;
+      }
+      if(!doc){
+       console.log('ID not found');
+        res.send('ID not found');
+        return;
+      }
+      console.log(doc);
+      res.status(200).send(doc);
+    });
 });
 
+app.patch('/todos/:id', (req,res)=>{
+  var id = req.params.id;
+  // we only want these properties to get updated
+  var body = _.pick(req.body, ['text','completed']);
 
+  if (!ObjectID.isValid(id)){
+    return res.status(404).send();
+  }
+  if(_.isBoolean(body.completed) && body.completed){
+    body.completedAt = new Date().getTime();
+  } else {
+    body.completed = false ;
+    body.completedAt = null
+  }
 
-})
+  Todo.findByIdAndUpdate(id, {$set: body} , {new:true}, (err,doc)=>{
+    if (err){
+      return res.status(400).send();
+    }
+    if (!doc){
+      return res.status(404).send();
+    }
+    res.send({todo: doc});
+  });
+
+});
 
 app.listen(port, ()=>{
   console.log('Starting at port ' + port );
